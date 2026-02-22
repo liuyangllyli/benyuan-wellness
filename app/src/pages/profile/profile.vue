@@ -2,14 +2,16 @@
   <view class="page">
     <!-- 顶部：一句说明 + 主操作（新老用户同一条流程，仅入口步数不同） -->
     <view class="hero">
-      <text class="hero-desc">{{ hasAnyProfile ? '可单独编辑任一块，或继续完成未填部分' : '分三步完成（基本信息 → 体质 → 身体测试），可随时保存' }}</text>
+      <text v-if="loadError" class="hero-error">{{ loadError }}</text>
+      <text v-else class="hero-desc">{{ hasAnyProfile ? profileCopy.heroDescFilled : profileCopy.heroDescEmpty }}</text>
+      <text v-if="!hasAnyProfile && !loadError" class="hero-tip">{{ profileCopy.heroDescEmptyTip }}</text>
       <button class="btn-start" @click="goAssessment">
         {{ startButtonText }}
       </button>
     </view>
 
     <!-- 完整测评摘要（基本信息 + 体质 + 身体测试） -->
-    <view class="blocks-title">完整测评摘要</view>
+    <view class="blocks-title">{{ profileCopy.blocksTitle }}</view>
     <view
       v-for="block in blocks"
       :key="block.mode"
@@ -18,35 +20,40 @@
     >
       <view class="block-header">
         <text class="block-name">{{ block.name }}</text>
-        <text class="block-edit" @click="goUpdate(block.mode)">编辑</text>
+        <text class="block-edit" @click="goUpdate(block.mode)">{{ profileCopy.blockEdit }}</text>
       </view>
       <view v-if="block.filled" class="block-body">
         <text v-for="(line, i) in block.lines" :key="i" class="block-line" :class="{ muted: line.muted }">
           {{ line.text }}
         </text>
       </view>
-      <view v-else class="block-empty">尚未填写，点击「编辑」填写</view>
+      <view v-else class="block-empty">{{ profileCopy.blockEmptyHint }}</view>
     </view>
 
-    <!-- 测评历史 -->
-    <view class="section history-section">
-      <text class="section-title">测评历史</text>
-      <text class="section-desc">最近 {{ history.length }} 条，点击查看详情</text>
+    <!-- 测评历史：默认收起，点击「查看」展开 -->
+    <view class="history-card" @click="historyExpand = !historyExpand">
+      <view class="history-card-header">
+        <text class="history-card-title">{{ profileCopy.historyTitle }}</text>
+        <text class="history-card-count">{{ profileCopy.historyRecords(history.length) }}</text>
+        <text class="history-card-toggle">{{ historyExpand ? profileCopy.historyToggleCollapse : profileCopy.historyToggleView }}</text>
+      </view>
     </view>
-    <view v-if="history.length === 0" class="empty-hint">
-      <text>暂无测评历史</text>
-    </view>
-    <view v-else class="history-list">
-      <view
-        v-for="item in history"
-        :key="item.id"
-        class="history-item"
-        @click="goDetail(item.id)"
-      >
-        <text class="history-type">{{ typeLabel(item.type) }}</text>
-        <view class="history-right">
-          <text class="history-time">{{ formatTime(item.timestamp) }}</text>
-          <text class="history-arrow">查看详情 ›</text>
+    <view v-if="historyExpand" class="history-expand">
+      <view v-if="history.length === 0" class="empty-hint">
+        <text>{{ profileCopy.historyEmpty }}</text>
+      </view>
+      <view v-else class="history-list">
+        <view
+          v-for="item in history"
+          :key="item.id"
+          class="history-item"
+          @click="goDetail(item.id)"
+        >
+          <text class="history-type">{{ typeLabel(item.type) }}</text>
+          <view class="history-right">
+            <text class="history-time">{{ formatDateTime(item.timestamp) }}</text>
+            <text class="history-arrow">{{ profileCopy.historyDetail }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -59,9 +66,13 @@ import { onShow } from '@dcloudio/uni-app'
 import { getProfile, getAssessmentHistory } from '@/lib/profile-utils'
 import type { BenyuanProfile, AssessmentRecord, AssessmentRecordType } from '@/lib/profile-utils'
 import { BASIC_Q2_OPTIONS, BASIC_Q3_OPTIONS, BASIC_OCCUPATION_OPTIONS } from '@/lib/assessment-data'
+import { formatDateTime } from '@/lib/format'
+import { profileCopy } from '@/lib/assessment-copy'
 
 const profile = ref<BenyuanProfile | null>(null)
 const history = ref<AssessmentRecord[]>([])
+const historyExpand = ref(false)
+const loadError = ref('')
 
 const hasAnyProfile = computed(() =>
   !!(profile.value?.basicInfo || profile.value?.constitution || profile.value?.bodyTest)
@@ -72,11 +83,11 @@ const hasAllBlocks = computed(
 )
 
 const startButtonText = computed(() => {
-  if (hasAllBlocks.value) return '去测评'
-  if (!profile.value?.basicInfo) return '从基本信息开始'
-  if (!profile.value?.constitution) return '继续：体质测评'
-  if (!profile.value?.bodyTest) return '继续：身体测试'
-  return '继续测评'
+  if (hasAllBlocks.value) return profileCopy.startFull
+  if (!profile.value?.basicInfo) return profileCopy.startFromBasic
+  if (!profile.value?.constitution) return profileCopy.startConstitution
+  if (!profile.value?.bodyTest) return profileCopy.startBodyTest
+  return profileCopy.startContinue
 })
 
 const blocks = computed(() => {
@@ -161,21 +172,11 @@ const specialConditionsLabel = computed(() => {
 
 function typeLabel(type: AssessmentRecordType): string {
   const map: Record<AssessmentRecordType, string> = {
-    basic_info: '基本信息',
-    constitution: '体质测评',
-    body_test: '身体测试',
+    basic_info: profileCopy.typeBasicInfo,
+    constitution: profileCopy.typeConstitution,
+    body_test: profileCopy.typeBodyTest,
   }
   return map[type] ?? type
-}
-
-function formatTime(ts: number): string {
-  const d = new Date(ts)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${y}-${m}-${day} ${h}:${min}`
 }
 
 /** 根据当前档案，进入测评时应落在哪一步（新用户/老用户同一条流程，只改入口步数） */
@@ -202,8 +203,16 @@ function goDetail(id: string) {
 }
 
 onShow(() => {
-  profile.value = getProfile()
-  history.value = getAssessmentHistory()
+  loadError.value = ''
+  try {
+    profile.value = getProfile()
+    history.value = getAssessmentHistory()
+  } catch (e) {
+    loadError.value = profileCopy.loadError
+    profile.value = null
+    history.value = []
+    uni.showToast({ title: profileCopy.loadError, icon: 'none' })
+  }
 })
 </script>
 
@@ -218,12 +227,23 @@ onShow(() => {
   margin-bottom: 32rpx;
 }
 
-.hero-desc {
+.hero-desc,
+.hero-tip,
+.hero-error {
   display: block;
   font-size: 28rpx;
   color: #5a6b5a;
   line-height: 1.5;
   margin-bottom: 24rpx;
+}
+
+.hero-tip {
+  color: #8f8f94;
+  font-size: 26rpx;
+}
+
+.hero-error {
+  color: #c0392b;
 }
 
 .btn-start {
@@ -301,22 +321,40 @@ onShow(() => {
   margin-bottom: 16rpx;
 }
 
-.history-section {
+.history-card {
   margin-top: 32rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
-.section-title {
-  display: block;
+.history-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.history-card-title {
   font-size: 30rpx;
   font-weight: 600;
   color: #2c2c2e;
 }
 
-.section-desc {
-  display: block;
+.history-card-count {
   font-size: 26rpx;
   color: #8f8f94;
-  margin-top: 8rpx;
+  flex: 1;
+}
+
+.history-card-toggle {
+  font-size: 28rpx;
+  color: #5c7c5c;
+}
+
+.history-expand {
+  margin-top: 12rpx;
+  padding-top: 12rpx;
 }
 
 .empty-hint {

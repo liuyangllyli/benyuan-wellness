@@ -3,7 +3,7 @@
     <template v-if="record">
       <view class="section">
         <text class="section-title">历史详情</text>
-        <text class="section-desc">{{ typeLabel(record.type) }} · {{ formatTime(record.timestamp) }}</text>
+        <text class="section-desc">{{ typeLabel(record.type) }} · {{ formatDateTime(record.timestamp) }}</text>
       </view>
 
       <template v-if="record.payload.basicInfo">
@@ -56,20 +56,27 @@
           </view>
         </view>
       </template>
+      <view class="nav-actions">
+        <button class="btn btn-outline" @click="goBack">{{ profileCopy.back }}</button>
+        <button class="btn btn-primary" @click="goToProfile">{{ profileCopy.backProfile }}</button>
+      </view>
     </template>
     <view v-else class="empty-state">
-      <text>未找到该记录</text>
-      <button class="btn btn-outline" @click="goBack">返回档案</button>
+      <text>{{ profileCopy.detailNotFound }}</text>
+      <button class="btn btn-outline" @click="goBack">{{ profileCopy.back }}</button>
+      <button class="btn btn-primary" @click="goToProfile">{{ profileCopy.backProfile }}</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getAssessmentHistory } from '@/lib/profile-utils'
 import type { AssessmentRecord, AssessmentRecordType } from '@/lib/profile-utils'
 import { BASIC_Q2_OPTIONS, BASIC_Q3_OPTIONS, BASIC_OCCUPATION_OPTIONS } from '@/lib/assessment-data'
+import { formatDateTime } from '@/lib/format'
+import { profileCopy } from '@/lib/assessment-copy'
 
 const record = ref<AssessmentRecord | null>(null)
 
@@ -107,25 +114,19 @@ const basicInfoOccupationLabel = computed(() => {
 
 function typeLabel(type: AssessmentRecordType): string {
   const map: Record<AssessmentRecordType, string> = {
-    basic_info: '基本信息',
-    constitution: '体质测评',
-    body_test: '身体测试',
+    basic_info: profileCopy.typeBasicInfo,
+    constitution: profileCopy.typeConstitution,
+    body_test: profileCopy.typeBodyTest,
   }
   return map[type] ?? type
 }
 
-function formatTime(ts: number): string {
-  const d = new Date(ts)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${y}-${m}-${day} ${h}:${min}`
-}
-
 function goBack() {
   uni.navigateBack()
+}
+
+function goToProfile() {
+  uni.switchTab({ url: '/pages/profile/profile' })
 }
 
 onLoad((options: Record<string, string> | undefined) => {
@@ -246,5 +247,22 @@ onLoad((options: Record<string, string> | undefined) => {
   background: #fff;
   color: #5c7c5c;
   border: 2rpx solid #5c7c5c;
+}
+
+.btn-primary {
+  background: #5c7c5c;
+  color: #fff;
+  border: none;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 48rpx;
+  padding-top: 24rpx;
+}
+
+.nav-actions .btn {
+  flex: 1;
 }
 </style>

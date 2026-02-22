@@ -120,7 +120,13 @@
         <button class="btn btn-primary" :disabled="!canSubmitBasicInfo" @click="submitBasicInfo">
           {{ mode === 'basic_info_only' ? '保存' : '下一步：体质测评' }}
         </button>
-        <view v-if="hasAnyProfile" class="profile-link" @click="goProfile">已有档案？查看完整档案</view>
+        <button
+          v-if="hasAnyProfile"
+          class="btn btn-outline"
+          @click="goProfile"
+        >
+          {{ mode === 'basic_info_only' ? assessmentCopy.viewProfile : assessmentCopy.viewProfileHint }}
+        </button>
       </view>
     </template>
 
@@ -138,13 +144,19 @@
           </view>
           <text class="progress-text">{{ currentIndex + 1 }}/{{ totalQuestions }}</text>
         </view>
-        <!-- 单题展示，一屏一题，题号与题目同一行 -->
+        <!-- 单题展示，一屏一题；第37/38题按性别灰调不填 -->
         <view class="question-card">
           <view class="question-head">
             <text class="question-num">第{{ currentIndex + 1 }}题</text>
             <text class="question-title">{{ currentQuestion.title }}</text>
           </view>
-          <view class="options">
+          <view v-if="(currentIndex === 36 || currentIndex === 37) && !constitutionGender" class="question-skip-hint">
+            <text>{{ assessmentCopy.constitutionNoGenderHint }}</text>
+          </view>
+          <view v-else-if="isConstitutionQuestionDisabled(currentIndex)" class="question-skip-hint">
+            <text>{{ currentIndex === 36 ? assessmentCopy.constitutionSkipFemale : assessmentCopy.constitutionSkipMale }}</text>
+          </view>
+          <view v-else class="options">
             <view
               v-for="(opt, optIdx) in currentQuestion.options"
               :key="optIdx"
@@ -155,6 +167,16 @@
               <view class="radio">
                 <view v-if="constitutionAnswers[currentIndex] === optIdx" class="radio-inner" />
               </view>
+              <text class="option-text">{{ opt.text }}</text>
+            </view>
+          </view>
+          <view v-if="isConstitutionQuestionDisabled(currentIndex) && constitutionGender" class="options options-disabled">
+            <view
+              v-for="(opt, optIdx) in currentQuestion.options"
+              :key="optIdx"
+              class="option-row option-row-disabled"
+            >
+              <view class="radio" />
               <text class="option-text">{{ opt.text }}</text>
             </view>
           </view>
@@ -170,7 +192,7 @@
           <button
             v-if="currentIndex < totalQuestions - 1"
             class="btn btn-primary"
-            :disabled="constitutionAnswers[currentIndex] === null"
+            :disabled="!isConstitutionQuestionDisabled(currentIndex) && constitutionAnswers[currentIndex] === null"
             @click="goNext"
           >
             下一题
@@ -264,8 +286,8 @@
           </view>
           <view class="result-actions">
             <button class="btn btn-primary" @click="goToStep(3)">继续身体测试</button>
-            <button class="btn btn-secondary" @click="goProfile">查看完整档案</button>
-            <button class="btn btn-outline result-btn" @click="goHome">返回首页</button>
+            <button class="btn btn-secondary" @click="goProfile">{{ assessmentCopy.viewProfile }}</button>
+            <button class="btn btn-outline result-btn" @click="goHome">{{ assessmentCopy.returnHome }}</button>
           </view>
         </view>
       </template>
@@ -601,8 +623,8 @@
             <text class="result-summary">{{ bodyResult.exerciseMethods.join('、') }}</text>
           </view>
           <view class="result-actions">
-            <button class="btn btn-primary" @click="goProfile">查看完整档案</button>
-            <button class="btn btn-outline result-btn" @click="goHome">返回首页</button>
+            <button class="btn btn-primary" @click="goProfile">{{ assessmentCopy.viewProfile }}</button>
+            <button class="btn btn-outline result-btn" @click="goHome">{{ assessmentCopy.returnHome }}</button>
           </view>
         </view>
       </template>
@@ -614,8 +636,8 @@
         <text class="modal-title">{{ modalTitle }}</text>
         <text class="modal-desc">{{ modalDesc }}</text>
         <view class="modal-actions">
-          <button class="btn btn-outline modal-btn" @click="modalCancel">暂不填写</button>
-          <button class="btn btn-primary modal-btn" @click="modalConfirm">继续填写</button>
+          <button class="btn btn-outline modal-btn" @click="modalCancel">{{ assessmentCopy.modalCancel }}</button>
+          <button class="btn btn-primary modal-btn" @click="modalConfirm">{{ assessmentCopy.modalConfirm }}</button>
         </view>
       </view>
     </view>
@@ -653,6 +675,7 @@ import {
   saveProfile,
   getProfile,
   appendAssessmentHistory,
+  updateOrAppendBodyTestHistory,
   newAssessmentId,
   computeConstitutionScores,
   computeConvertedScores,
@@ -667,6 +690,7 @@ import {
   OVEREXERCISE_REMINDER_TEXT,
   type BodyTestAnswersInput,
 } from '@/lib/body-test-scoring'
+import { assessmentCopy } from '@/lib/assessment-copy'
 
 type StepMode = '' | 'basic_info_only' | 'constitution_only' | 'body_test_only'
 
@@ -766,9 +790,23 @@ const currentQuestion = computed(() => CONSTITUTION_QUESTIONS[currentIndex.value
 const progressPercent = computed(() =>
   totalQuestions > 0 ? ((currentIndex.value + 1) / totalQuestions) * 100 : 0
 )
-const canSubmitConstitution = computed(() =>
-  constitutionAnswers.value.every((a) => a !== null)
+/** 体质第37题限女性、第38题限男性；已选性别后不适用题目灰调不填 */
+const constitutionGender = computed(
+  () => basicInfo.value.gender || getProfile()?.basicInfo?.gender
 )
+const CONSTITUTION_FEMALE_ONLY_INDEX = 36
+const CONSTITUTION_MALE_ONLY_INDEX = 37
+function isConstitutionQuestionDisabled(index: number): boolean {
+  const g = constitutionGender.value
+  if (!g) return false
+  return (
+    (index === CONSTITUTION_FEMALE_ONLY_INDEX && g !== 'female') ||
+    (index === CONSTITUTION_MALE_ONLY_INDEX && g !== 'male')
+  )
+}
+const canSubmitConstitution = computed(() => {
+  return constitutionAnswers.value.every((a, i) => a !== null || isConstitutionQuestionDisabled(i))
+})
 
 /** Step1：题1 至少选一项（可仅选“没有上述情况”），题2、题3 必选 */
 const canSubmitBasicInfo = computed(() => {
@@ -821,10 +859,57 @@ function submitBasicInfo() {
   step1Done.value = true
   hasAnyProfile.value = true
   if (mode.value === 'basic_info_only') {
-    uni.showToast({ title: '已保存' })
+    uni.showToast({ title: '保存成功', icon: 'success' })
     return
   }
   currentStep.value = 2
+}
+
+/** 根据基本信息中勾选的「特殊情况」生成身体测试不建议的提示（让用户记得是哪些选项触发） */
+function getSpecialSituationModalDesc(profile: ReturnType<typeof getProfile>): string {
+  const ids = profile?.basicInfo?.specialConditions || []
+  const labels = ids
+    .filter((id) => id !== 'special_none')
+    .map((id) => BASIC_Q1_OPTIONS.find((o) => o.id === id)?.text)
+    .filter(Boolean) as string[]
+  if (labels.length === 0) return assessmentCopy.bodyTestDefault
+  const part = labels.join('」「')
+  return `${assessmentCopy.bodyTestReasonSpecial(part)}，${assessmentCopy.bodyTestAdviceBase}${assessmentCopy.bodyTestAdviceEnd}`
+}
+
+/** 根据年龄区间生成家人陪同提示（让用户记得是哪个年龄段触发） */
+function getAgeCompanionModalDesc(profile: ReturnType<typeof getProfile>): string {
+  const ageRange = profile?.basicInfo?.ageRange
+  if (!ageRange) return assessmentCopy.bodyTestAgeCompanionNoRange
+  const opt = BASIC_Q2_OPTIONS.find((o) => o.value === ageRange)
+  const label = opt?.text || ageRange
+  return assessmentCopy.bodyTestAgeCompanionWithRange(label)
+}
+
+/** 同时存在「特殊情况」与「年龄陪同」时，合并为一条提示 */
+function getBodyTestModalDesc(profile: ReturnType<typeof getProfile>): string {
+  const hasSpecial = profile?.derived?.specialSituationSelected
+  const hasAge = profile?.derived?.minorOrElderNeedCompanion
+  const parts: string[] = []
+  if (hasSpecial) {
+    const ids = profile?.basicInfo?.specialConditions || []
+    const labels = ids
+      .filter((id) => id !== 'special_none')
+      .map((id) => BASIC_Q1_OPTIONS.find((o) => o.id === id)?.text)
+      .filter(Boolean) as string[]
+    if (labels.length) parts.push(assessmentCopy.bodyTestReasonSpecial(labels.join('」「')))
+  }
+  if (hasAge && profile?.basicInfo?.ageRange) {
+    const opt = BASIC_Q2_OPTIONS.find((o) => o.value === profile.basicInfo!.ageRange)
+    const label = opt?.text || profile.basicInfo!.ageRange
+    parts.push(assessmentCopy.bodyTestReasonAge(label))
+  }
+  if (parts.length === 0) return assessmentCopy.bodyTestDefault
+  const reason = parts.join('，')
+  let advice = assessmentCopy.bodyTestAdviceBase
+  if (hasAge) advice += assessmentCopy.bodyTestAdviceAge
+  advice += assessmentCopy.bodyTestAdviceEnd
+  return `${reason}。${advice}`
 }
 
 function goToStep(step: 1 | 2 | 3) {
@@ -844,18 +929,9 @@ function goToStep(step: 1 | 2 | 3) {
     if (!step2Done.value && !getProfile()?.constitution) return
     const profile = getProfile()
     const derived = profile?.derived
-    if (derived?.specialSituationSelected) {
-      modalTitle.value = '温馨提示'
-      modalDesc.value =
-        '根据您填写的情况，身体测试不建议进行。您也可以选择继续填写，结果仅供参考。'
-      pendingStep3.value = true
-      modalVisible.value = true
-      return
-    }
-    if (derived?.minorOrElderNeedCompanion) {
-      modalTitle.value = '温馨提示'
-      modalDesc.value =
-        '您选择的年龄段建议在家人陪同下进行线上练习。是否继续填写身体测评？'
+    if (derived?.specialSituationSelected || derived?.minorOrElderNeedCompanion) {
+      modalTitle.value = assessmentCopy.modalTitle
+      modalDesc.value = getBodyTestModalDesc(profile)
       pendingStep3.value = true
       modalVisible.value = true
       return
@@ -875,6 +951,7 @@ function modalConfirm() {
 function modalCancel() {
   modalVisible.value = false
   pendingStep3.value = false
+  if (mode.value === 'body_test_only') uni.navigateBack()
 }
 
 /** Step3 多选切换 */
@@ -943,13 +1020,17 @@ function submitBodyTest() {
     updatedAt: Date.now(),
   }
   saveProfile({ bodyTest: bodyTestBlock })
-  appendAssessmentHistory({
-    id: newAssessmentId(),
-    timestamp: Date.now(),
-    type: 'body_test',
-    payload: { bodyTest: bodyTestBlock },
-    logicVersion: 'v1.0',
-  })
+  if (mode.value === 'body_test_only') {
+    updateOrAppendBodyTestHistory(bodyTestBlock)
+  } else {
+    appendAssessmentHistory({
+      id: newAssessmentId(),
+      timestamp: Date.now(),
+      type: 'body_test',
+      payload: { bodyTest: bodyTestBlock },
+      logicVersion: 'v1.0',
+    })
+  }
   bodyResult.value = {
     score4_12: scoring.score4_12,
     evaluationText: scoring.evaluationText,
@@ -975,21 +1056,25 @@ onLoad((options: Record<string, string> | undefined) => {
     // 若直接进 Step3 且需要弹窗（特殊情况/年龄陪同），先停在 Step2 并弹出确认
     if (startStep === 3 && profile?.derived) {
       const d = profile.derived
-      if (d.specialSituationSelected) {
+      if (d.specialSituationSelected || d.minorOrElderNeedCompanion) {
         pendingStep3.value = true
-        modalTitle.value = '温馨提示'
-        modalDesc.value =
-          '根据您填写的情况，身体测试不建议进行。您也可以选择继续填写，结果仅供参考。'
-        modalVisible.value = true
-        currentStep.value = 2
-      } else if (d.minorOrElderNeedCompanion) {
-        pendingStep3.value = true
-        modalTitle.value = '温馨提示'
-        modalDesc.value =
-          '您选择的年龄段建议在家人陪同下进行线上练习。是否继续填写身体测评？'
+        modalTitle.value = assessmentCopy.modalTitle
+        modalDesc.value = getBodyTestModalDesc(profile)
         modalVisible.value = true
         currentStep.value = 2
       }
+    }
+  }
+
+  // 从档案点「编辑」身体测试进入时，若当前有特殊情况/年龄陪同，也需弹窗
+  if (m === 'body_test_only' && profile?.derived) {
+    const d = profile.derived
+    if (d.specialSituationSelected || d.minorOrElderNeedCompanion) {
+      pendingStep3.value = true
+      modalTitle.value = assessmentCopy.modalTitle
+      modalDesc.value = getBodyTestModalDesc(profile)
+      modalVisible.value = true
+      currentStep.value = 2
     }
   }
 
@@ -1002,6 +1087,12 @@ onLoad((options: Record<string, string> | undefined) => {
       ageRange: profile.basicInfo.ageRange,
       gender: profile.basicInfo.gender,
       occupation: profile.basicInfo.occupation,
+    }
+  }
+  if (profile?.constitution && currentStep.value === 2) {
+    const prev = profile.constitution.answers
+    if (Array.isArray(prev) && prev.length === CONSTITUTION_QUESTIONS.length) {
+      constitutionAnswers.value = prev.map((a) => (typeof a === 'number' ? a : null))
     }
   }
   if (profile?.bodyTest && currentStep.value === 3) {
@@ -1032,7 +1123,12 @@ function goNext() {
 
 function submitConstitution() {
   if (!canSubmitConstitution.value) return
-  const indices = constitutionAnswers.value as number[]
+  const raw = constitutionAnswers.value
+  const indices = raw.map((a, i) => {
+    if (a !== null) return a
+    if (isConstitutionQuestionDisabled(i)) return 0
+    return 0
+  }) as number[]
   const { baseScores, actualScores, dimensionScores } = computeConstitutionScores(
     indices,
     CONSTITUTION_QUESTIONS
@@ -1081,7 +1177,7 @@ function goHome() {
 }
 
 function goProfile() {
-  uni.navigateTo({ url: '/pages/profile/profile' })
+  uni.switchTab({ url: '/pages/profile/profile' })
 }
 
 function goBodyTest() {
@@ -1292,6 +1388,23 @@ function goBodyTest() {
   align-items: flex-start;
   gap: 12rpx;
   margin-bottom: 24rpx;
+}
+
+.question-skip-hint {
+  padding: 20rpx 24rpx;
+  background: #f0f0f0;
+  border-radius: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.question-skip-hint text {
+  font-size: 26rpx;
+  color: #8f8f94;
+}
+
+.option-row-disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .question-num {
@@ -1587,12 +1700,6 @@ function goBodyTest() {
   gap: 24rpx;
 }
 
-.profile-link {
-  margin-top: 16rpx;
-  font-size: 26rpx;
-  color: #5c7c5c;
-  text-align: center;
-}
 
 .body-placeholder {
   padding: 80rpx 32rpx;

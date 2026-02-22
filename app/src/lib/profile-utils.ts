@@ -269,6 +269,33 @@ export function appendAssessmentHistory(record: AssessmentRecord): void {
   uni.setStorageSync(HISTORY_KEY, JSON.stringify(capped))
 }
 
+/**
+ * 身体测试：编辑时更新最近一条 body_test 记录，无则追加。
+ * 从档案进入「编辑身体测试」时仅更新，不新增历史条。
+ */
+export function updateOrAppendBodyTestHistory(bodyTest: BodyTestBlock): void {
+  const list = getAssessmentHistory()
+  const idx = list.findIndex((r) => r.type === 'body_test')
+  const now = Date.now()
+  if (idx !== -1) {
+    list[idx] = {
+      ...list[idx],
+      timestamp: now,
+      payload: { ...list[idx].payload, bodyTest },
+    }
+  } else {
+    list.unshift({
+      id: newAssessmentId(),
+      timestamp: now,
+      type: 'body_test',
+      payload: { bodyTest },
+      logicVersion: 'v1.0',
+    })
+  }
+  const capped = list.slice(0, HISTORY_CAP)
+  uni.setStorageSync(HISTORY_KEY, JSON.stringify(capped))
+}
+
 /** 生成一条测评记录的 id（简单唯一即可） */
 export function newAssessmentId(): string {
   return `a_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
