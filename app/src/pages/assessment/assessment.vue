@@ -949,9 +949,16 @@ function modalConfirm() {
 }
 
 function modalCancel() {
+  const wasBodyTestOnly = mode.value === 'body_test_only'
   modalVisible.value = false
   pendingStep3.value = false
-  if (mode.value === 'body_test_only') uni.navigateBack()
+  if (wasBodyTestOnly) {
+    uni.switchTab({ url: '/pages/profile/profile' })
+    return
+  }
+  // 完整流程中从 Step2 弹窗点「暂不填写」时返回上一页，避免留在测评页
+  const pages = getCurrentPages()
+  if (pages.length > 1) uni.navigateBack()
 }
 
 /** Step3 多选切换 */
