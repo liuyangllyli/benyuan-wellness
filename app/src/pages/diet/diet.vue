@@ -1817,12 +1817,16 @@ onShow(refresh)
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
+/* scroll-view 在 H5 下必须用固定高度才能滚动，100% 在部分手机不生效 */
 .week-days-scroll {
-  height: 100%;
+  height: 55vh;
   padding-bottom: 24rpx;
   box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
 }
 
 .week-day {
@@ -1983,18 +1987,20 @@ onShow(refresh)
   flex-shrink: 0;
 }
 
-.ingredients-scroll {
-  height: 100%;
-  box-sizing: border-box;
-  padding-bottom: 24rpx;
-}
-
 .ingredients-sheet .ingredients-scroll-wrap {
   flex: 1;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* scroll-view 在 H5 下必须用固定高度才能滚动，100% 在部分手机不生效 */
+.ingredients-scroll {
+  height: 55vh;
+  box-sizing: border-box;
+  padding-bottom: 24rpx;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ingredients-group {
