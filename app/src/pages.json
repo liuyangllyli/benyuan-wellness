@@ -1,0 +1,72 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": { "navigationBarTitleText": "此刻" }
+		},
+		{
+			"path": "pages/assessment/assessment",
+			"style": { "navigationBarTitleText": "知己" }
+		},
+		{
+			"path": "pages/practice/practice",
+			"style": { "navigationBarTitleText": "炼体" }
+		},
+		{
+			"path": "pages/diet/diet",
+			"style": { "navigationBarTitleText": "食养" }
+		},
+		{
+			"path": "pages/knowledge/knowledge",
+			"style": { "navigationBarTitleText": "明理" }
+		},
+		{
+			"path": "pages/records/records",
+			"style": { "navigationBarTitleText": "归元" }
+		},
+		{
+			"path": "pages/onboarding/onboarding",
+			"style": { "navigationBarTitleText": "本元", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/reflection/reflection",
+			"style": { "navigationBarTitleText": "觉察与收束" }
+		},
+		{
+			"path": "pages/calm/calm",
+			"style": { "navigationBarTitleText": "静心", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/settings/settings",
+			"style": { "navigationBarTitleText": "我的偏好" }
+		},
+		{
+			"path": "pages/practice-plan/practice-plan",
+			"style": { "navigationBarTitleText": "炼体计划" }
+		},
+		{
+			"path": "pages/notfound/notfound",
+			"style": { "navigationBarTitleText": "页面不存在" }
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "本元养生",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#7A7E83",
+		"selectedColor": "#3cc51f",
+		"borderStyle": "black",
+		"backgroundColor": "#ffffff",
+		"list": [
+			{ "pagePath": "pages/index/index", "text": "此刻", "iconPath": "static/tabbar/index.png", "selectedIconPath": "static/tabbar/index-active.png" },
+			{ "pagePath": "pages/assessment/assessment", "text": "知己", "iconPath": "static/tabbar/assessment.png", "selectedIconPath": "static/tabbar/assessment-active.png" },
+			{ "pagePath": "pages/practice/practice", "text": "炼体", "iconPath": "static/tabbar/practice.png", "selectedIconPath": "static/tabbar/practice-active.png" },
+			{ "pagePath": "pages/diet/diet", "text": "食养", "iconPath": "static/tabbar/diet.png", "selectedIconPath": "static/tabbar/diet-active.png" },
+			{ "pagePath": "pages/knowledge/knowledge", "text": "明理", "iconPath": "static/tabbar/knowledge.png", "selectedIconPath": "static/tabbar/knowledge-active.png" },
+			{ "pagePath": "pages/records/records", "text": "归元", "iconPath": "static/tabbar/records.png", "selectedIconPath": "static/tabbar/records-active.png" }
+		]
+	}
+}
