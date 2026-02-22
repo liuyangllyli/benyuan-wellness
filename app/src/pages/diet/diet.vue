@@ -317,7 +317,8 @@
           <text class="sheet-title">下一周菜单</text>
           <text class="sheet-close" @click="closeWeekPlan">×</text>
         </view>
-        <view class="week-days">
+        <view class="week-days-wrap">
+          <scroll-view scroll-y class="week-days-scroll">
           <view v-for="(day, dateYMD) in weekPlanMeals" :key="dateYMD" class="week-day">
             <view class="week-day-head" @click="openDaySheet(dateYMD)">
               <text class="week-date">{{ formatWeekDay(dateYMD) }}</text>
@@ -361,11 +362,12 @@
               </view>
             </view>
           </view>
+          </scroll-view>
         </view>
         <view class="week-actions">
-          <button v-if="hasWeekPlanMeals" class="btn btn-outline" @click="previewWeekIngredients">查看本周食材</button>
-          <button class="btn btn-outline" @click="generateWeekPlan">一键推荐本周菜单</button>
-          <button class="btn btn-primary" @click="confirmWeekPlan">确认本周菜单</button>
+          <button v-if="hasWeekPlanMeals" class="btn btn-outline week-action-btn" @click="previewWeekIngredients">查看本周食材</button>
+          <button class="btn btn-outline week-action-btn" @click="generateWeekPlan">一键推荐本周菜单</button>
+          <button class="btn btn-primary week-action-btn-primary" @click="confirmWeekPlan">确认本周菜单</button>
         </view>
       </view>
     </view>
@@ -381,14 +383,16 @@
         <view v-if="weekPlanIngredientsByCategory.length === 0" class="ingredients-empty">
           <text class="ingredients-empty-text">本周暂无菜单，先安排下周菜单即可生成采购清单</text>
         </view>
-        <scroll-view v-else scroll-y class="ingredients-scroll">
-          <view v-for="g in weekPlanIngredientsByCategory" :key="g.category" class="ingredients-group">
-            <text class="ingredients-category-label">{{ g.category }}</text>
-            <view class="ingredients-list">
-              <text v-for="(ing, i) in g.items" :key="g.category + '-' + i" class="ingredient-item">{{ ing }}</text>
+        <view v-else class="ingredients-scroll-wrap">
+          <scroll-view scroll-y class="ingredients-scroll">
+            <view v-for="g in weekPlanIngredientsByCategory" :key="g.category" class="ingredients-group">
+              <text class="ingredients-category-label">{{ g.category }}</text>
+              <view class="ingredients-list">
+                <text v-for="(ing, i) in g.items" :key="g.category + '-' + i" class="ingredient-item">{{ ing }}</text>
+              </view>
             </view>
-          </view>
-        </scroll-view>
+          </scroll-view>
+        </view>
       </view>
     </view>
 
@@ -1806,12 +1810,19 @@ onShow(refresh)
   background: #fff;
   border-radius: 32rpx 32rpx 0 0;
   padding: 32rpx 32rpx 80rpx;
+  padding-bottom: calc(80rpx + env(safe-area-inset-bottom));
 }
 
-.week-days {
+.week-days-wrap {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.week-days-scroll {
+  height: 100%;
   padding-bottom: 24rpx;
+  box-sizing: border-box;
 }
 
 .week-day {
@@ -1873,9 +1884,22 @@ onShow(refresh)
 
 .week-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 24rpx;
   padding-top: 24rpx;
   border-top: 1rpx solid #eee;
+  flex-shrink: 0;
+}
+
+.week-action-btn {
+  flex: 1 1 45%;
+  min-width: 0;
+  white-space: normal;
+  min-height: 72rpx;
+}
+
+.week-action-btn-primary {
+  flex: 1 1 100%;
 }
 
 .day-sheet {
@@ -1931,6 +1955,13 @@ onShow(refresh)
   border-top: 1rpx solid #eee;
 }
 
+.ingredients-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
 .ingredients-sheet .sheet-desc {
   display: block;
   font-size: 26rpx;
@@ -1948,36 +1979,54 @@ onShow(refresh)
   color: #8f8f94;
 }
 
+.ingredients-sheet .sheet-head + .sheet-desc {
+  flex-shrink: 0;
+}
+
 .ingredients-scroll {
-  height: 50vh;
-  max-height: 50vh;
+  height: 100%;
+  box-sizing: border-box;
+  padding-bottom: 24rpx;
+}
+
+.ingredients-sheet .ingredients-scroll-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .ingredients-group {
   margin-bottom: 24rpx;
+  padding: 20rpx 24rpx;
+  background: #f8f9f8;
+  border-radius: 16rpx;
+  border-left: 6rpx solid #5c7c5c;
 }
 
 .ingredients-category-label {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
+  font-size: 30rpx;
+  font-weight: 700;
   color: #2c2c2e;
-  margin-bottom: 12rpx;
-  padding-left: 4rpx;
+  margin-bottom: 16rpx;
+  padding-left: 0;
+  letter-spacing: 0.5rpx;
 }
 
 .ingredients-list {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
-  padding: 16rpx 0;
+  padding: 0;
 }
 
 .ingredient-item {
   font-size: 26rpx;
   padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: rgba(92, 124, 92, 0.08);
+  background: rgba(92, 124, 92, 0.12);
   color: #2c2c2e;
 }
 
