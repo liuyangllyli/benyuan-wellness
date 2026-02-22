@@ -1095,7 +1095,8 @@ onLoad((options: Record<string, string> | undefined) => {
       constitutionAnswers.value = prev.map((a) => (typeof a === 'number' ? a : null))
     }
   }
-  if (profile?.bodyTest && currentStep.value === 3) {
+  // 身体测试预填：Step3 或从档案编辑身体测试时都预填，避免弹窗把 currentStep 设为 2 导致未预填
+  if (profile?.bodyTest && (currentStep.value === 3 || m === 'body_test_only')) {
     bodyAnswers.value = {
       q4: profile.bodyTest.q4,
       q5: profile.bodyTest.q5,
