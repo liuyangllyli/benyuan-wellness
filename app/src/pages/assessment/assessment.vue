@@ -1,29 +1,135 @@
 <template>
   <view class="page">
-    <!-- Tab 切换 -->
-    <view class="tabs">
+    <!-- 步骤条：Step1 基本信息 → Step2 体质测评 → Step3 身体测试 -->
+    <view v-if="showStepBar" class="step-bar">
       <view
-        class="tab"
-        :class="{ active: activeTab === 'constitution' }"
-        @click="activeTab = 'constitution'"
+        class="step-item"
+        :class="{ active: currentStep === 1, done: step1Done }"
+        @click="goToStep(1)"
       >
-        体质测评
+        <text class="step-num">1</text>
+        <text class="step-label">基本信息</text>
       </view>
+      <view class="step-line" :class="{ done: step1Done }" />
       <view
-        class="tab"
-        :class="{ active: activeTab === 'body' }"
-        @click="activeTab = 'body'"
+        class="step-item"
+        :class="{ active: currentStep === 2, done: step2Done }"
+        @click="goToStep(2)"
       >
-        身体测试
+        <text class="step-num">2</text>
+        <text class="step-label">体质测评</text>
+      </view>
+      <view class="step-line" :class="{ done: step2Done }" />
+      <view
+        class="step-item"
+        :class="{ active: currentStep === 3 }"
+        @click="goToStep(3)"
+      >
+        <text class="step-num">3</text>
+        <text class="step-label">身体测试</text>
       </view>
     </view>
 
-    <!-- 体质测评 -->
-    <template v-if="activeTab === 'constitution'">
+    <!-- Step1 基本信息 -->
+    <template v-if="currentStep === 1">
+      <view class="section">
+        <text class="section-title">基本信息</text>
+        <text class="section-desc">请如实填写，用于为您提供更合适的测评与建议，约 1 分钟</text>
+      </view>
+      <view class="question-card">
+        <view class="question-head">
+          <text class="question-num">第1题</text>
+          <text class="question-title">您是否存在以下特殊情况？（可多选）</text>
+        </view>
+        <view class="options">
+          <view
+            v-for="(opt, optIdx) in BASIC_Q1_OPTIONS"
+            :key="opt.id"
+            class="option-row"
+            :class="{ selected: basicQ1Selected(opt.id) }"
+            @click="toggleBasicQ1(opt.id)"
+          >
+            <view class="checkbox">
+              <view v-if="basicQ1Selected(opt.id)" class="checkbox-inner">✓</view>
+            </view>
+            <text class="option-text">{{ opt.text }}</text>
+          </view>
+        </view>
+      </view>
+      <view class="question-card">
+        <view class="question-head">
+          <text class="question-num">第2题</text>
+          <text class="question-title">您的年龄段</text>
+        </view>
+        <view class="options">
+          <view
+            v-for="opt in BASIC_Q2_OPTIONS"
+            :key="opt.id"
+            class="option-row"
+            :class="{ selected: basicInfo.ageRange === opt.value }"
+            @click="basicInfo.ageRange = opt.value"
+          >
+            <view class="radio">
+              <view v-if="basicInfo.ageRange === opt.value" class="radio-inner" />
+            </view>
+            <text class="option-text">{{ opt.text }}</text>
+          </view>
+        </view>
+      </view>
+      <view class="question-card">
+        <view class="question-head">
+          <text class="question-num">第3题</text>
+          <text class="question-title">性别</text>
+        </view>
+        <view class="options">
+          <view
+            v-for="opt in BASIC_Q3_OPTIONS"
+            :key="opt.id"
+            class="option-row"
+            :class="{ selected: basicInfo.gender === opt.value }"
+            @click="basicInfo.gender = opt.value"
+          >
+            <view class="radio">
+              <view v-if="basicInfo.gender === opt.value" class="radio-inner" />
+            </view>
+            <text class="option-text">{{ opt.text }}</text>
+          </view>
+        </view>
+      </view>
+      <view class="question-card">
+        <view class="question-head">
+          <text class="question-num">职业</text>
+          <text class="question-title">（选填）</text>
+        </view>
+        <view class="options">
+          <view
+            v-for="opt in BASIC_OCCUPATION_OPTIONS"
+            :key="opt.id"
+            class="option-row"
+            :class="{ selected: basicInfo.occupation === opt.id }"
+            @click="basicInfo.occupation = basicInfo.occupation === opt.id ? undefined : opt.id"
+          >
+            <view class="radio">
+              <view v-if="basicInfo.occupation === opt.id" class="radio-inner" />
+            </view>
+            <text class="option-text">{{ opt.text }}</text>
+          </view>
+        </view>
+      </view>
+      <view class="nav-actions">
+        <button class="btn btn-primary" :disabled="!canSubmitBasicInfo" @click="submitBasicInfo">
+          {{ mode === 'basic_info_only' ? '保存' : '下一步：体质测评' }}
+        </button>
+        <view v-if="hasAnyProfile" class="profile-link" @click="goProfile">已有档案？查看完整档案</view>
+      </view>
+    </template>
+
+    <!-- Step2 体质测评 -->
+    <template v-else-if="currentStep === 2">
       <template v-if="!showResult">
         <view class="section">
           <text class="section-title">中医体质测评</text>
-          <text class="section-desc">请根据近一年的体验和感觉作答</text>
+          <text class="section-desc">请根据近一年的体验和感觉作答，约 5 分钟</text>
         </view>
         <!-- 进度条：短条，符合业界习惯 -->
         <view class="progress-wrap">
@@ -82,9 +188,10 @@
       <template v-else>
         <view class="result">
           <text class="result-title">体质测评结果</text>
-          <view class="result-card">
+          <view class="result-card result-card-main">
             <text class="result-type">体质判定结果</text>
             <text v-if="resultDetermination" class="result-summary">{{ resultDetermination.summary }}</text>
+            <text class="result-ref">依据《中医体质分类与判定》</text>
           </view>
           <!-- 判定标准说明（来自平和质与偏颇体质判定标准表） -->
           <view class="criteria-wrap">
@@ -156,36 +263,450 @@
             </view>
           </view>
           <view class="result-actions">
-            <button class="btn btn-primary" @click="goHome">返回首页</button>
-            <button class="btn btn-secondary" @click="goBodyTest">继续身体测试</button>
+            <button class="btn btn-primary" @click="goToStep(3)">继续身体测试</button>
+            <button class="btn btn-secondary" @click="goProfile">查看完整档案</button>
+            <button class="btn btn-outline result-btn" @click="goHome">返回首页</button>
           </view>
         </view>
       </template>
     </template>
 
-    <!-- 身体测试（占位） -->
-    <view v-else class="body-placeholder">
-      <text class="placeholder-title">身体测试</text>
-      <text class="placeholder-desc">5 题 + 疼痛部位多选，敬请期待。</text>
-      <text class="placeholder-desc">完成体质测评后，可在此进行身体测试。</text>
+    <!-- Step3 身体测试（题4-19） -->
+    <template v-else-if="currentStep === 3">
+      <template v-if="!showBodyResult">
+        <view class="section">
+          <text class="section-title">身体测试</text>
+          <text class="section-desc">请根据您的实际情况作答，用于运动表现评估与炼体法推荐，约 3 分钟</text>
+        </view>
+        <scroll-view scroll-y class="body-test-form" :show-scrollbar="true">
+          <!-- 题4-5 -->
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第1题</text>
+              <text class="question-title">健康在您生活中的重要程度？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q4_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q4 === idx }"
+                @click="bodyAnswers.q4 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q4 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第2题</text>
+              <text class="question-title">您每周进行运动的次数？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q5_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q5 === idx }"
+                @click="bodyAnswers.q5 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q5 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <!-- 题6 多选 -->
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第3题</text>
+              <text class="question-title">您常做的运动类型？（可多选）</text>
+            </view>
+            <view class="options options-multi">
+              <view
+                v-for="(opt, idx) in BODY_Q6_OPTIONS"
+                :key="opt.id"
+                class="option-row"
+                :class="{ selected: (bodyAnswers.q6 || []).includes(idx) }"
+                @click="toggleBodyQ6(idx)"
+              >
+                <view class="checkbox">
+                  <view v-if="(bodyAnswers.q6 || []).includes(idx)" class="checkbox-inner">✓</view>
+                </view>
+                <text class="option-text">{{ opt.text }}（{{ opt.intensity }}）</text>
+              </view>
+            </view>
+          </view>
+          <!-- 题7-12 单选 -->
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第4题</text>
+              <text class="question-title">您每次低强度运动大约持续多久？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q7_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q7 === idx }"
+                @click="bodyAnswers.q7 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q7 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第5题</text>
+              <text class="question-title">您每次中强度运动大约持续多久？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q8_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q8 === idx }"
+                @click="bodyAnswers.q8 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q8 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第6题</text>
+              <text class="question-title">您每次高强度运动大约持续多久？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q9_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q9 === idx }"
+                @click="bodyAnswers.q9 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q9 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第7题</text>
+              <text class="question-title">运动后您的身体感受通常是？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q10_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q10 === idx }"
+                @click="bodyAnswers.q10 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q10 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第8题</text>
+              <text class="question-title">运动后次日您的身体状态通常是？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q11_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q11 === idx }"
+                @click="bodyAnswers.q11 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q11 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第9题</text>
+              <text class="question-title">您的关节健康状况？</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q12_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q12 === idx }"
+                @click="bodyAnswers.q12 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q12 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <!-- 题13 14 多选 -->
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第10题</text>
+              <text class="question-title">长期困扰（可多选）</text>
+            </view>
+            <view class="options options-multi">
+              <view
+                v-for="(opt, idx) in BODY_Q13_OPTIONS"
+                :key="opt.id"
+                class="option-row"
+                :class="{ selected: (bodyAnswers.q13 || []).includes(idx) }"
+                @click="toggleBodyQ13(idx)"
+              >
+                <view class="checkbox">
+                  <view v-if="(bodyAnswers.q13 || []).includes(idx)" class="checkbox-inner">✓</view>
+                </view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第11题</text>
+              <text class="question-title">中式运动核心需求（可多选）</text>
+            </view>
+            <view class="options options-multi">
+              <view
+                v-for="(opt, idx) in BODY_Q14_OPTIONS"
+                :key="opt.id"
+                class="option-row"
+                :class="{ selected: (bodyAnswers.q14 || []).includes(idx) }"
+                @click="toggleBodyQ14(idx)"
+              >
+                <view class="checkbox">
+                  <view v-if="(bodyAnswers.q14 || []).includes(idx)" class="checkbox-inner">✓</view>
+                </view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <!-- 题15-19 四档 -->
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第12题</text>
+              <text class="question-title">{{ BODY_Q15_TITLE }}</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q15_19_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q15 === idx }"
+                @click="bodyAnswers.q15 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q15 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第13题</text>
+              <text class="question-title">{{ BODY_Q16_TITLE }}</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q15_19_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q16 === idx }"
+                @click="bodyAnswers.q16 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q16 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第14题</text>
+              <text class="question-title">{{ BODY_Q17_TITLE }}</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q15_19_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q17 === idx }"
+                @click="bodyAnswers.q17 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q17 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第15题</text>
+              <text class="question-title">{{ BODY_Q18_TITLE }}</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q15_19_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q18 === idx }"
+                @click="bodyAnswers.q18 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q18 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="question-card">
+            <view class="question-head">
+              <text class="question-num">第16题</text>
+              <text class="question-title">{{ BODY_Q19_TITLE }}</text>
+            </view>
+            <view class="options">
+              <view
+                v-for="(opt, idx) in BODY_Q15_19_OPTIONS"
+                :key="idx"
+                class="option-row"
+                :class="{ selected: bodyAnswers.q19 === idx }"
+                @click="bodyAnswers.q19 = idx"
+              >
+                <view class="radio"><view v-if="bodyAnswers.q19 === idx" class="radio-inner" /></view>
+                <text class="option-text">{{ opt.text }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="nav-actions" style="margin-bottom: 80rpx;">
+            <button class="btn btn-primary" :disabled="!canSubmitBodyTest" @click="submitBodyTest">
+              提交身体测试
+            </button>
+          </view>
+        </scroll-view>
+      </template>
+      <template v-else>
+        <view class="result">
+          <text class="result-title">身体测试结果</text>
+          <view class="result-card">
+            <text class="result-type">运动表现</text>
+            <text class="result-summary">总分（第1-9题）：{{ bodyResult.score4_12 }}</text>
+            <text class="result-guide">{{ bodyResult.evaluationText }}</text>
+            <text v-if="bodyResult.overtrainingWarning" class="result-guide hint">
+              {{ OVEREXERCISE_REMINDER_TEXT }}
+            </text>
+          </view>
+          <view v-if="bodyResult.exerciseMethods && bodyResult.exerciseMethods.length" class="result-card">
+            <text class="result-type">为您推荐</text>
+            <text class="result-summary">{{ bodyResult.exerciseMethods.join('、') }}</text>
+          </view>
+          <view class="result-actions">
+            <button class="btn btn-primary" @click="goProfile">查看完整档案</button>
+            <button class="btn btn-outline result-btn" @click="goHome">返回首页</button>
+          </view>
+        </view>
+      </template>
+    </template>
+
+    <!-- 弹窗：进入 Step3 前根据 profile.derived 提示（主操作在右，符合习惯） -->
+    <view v-if="modalVisible" class="modal-mask" @click.self="modalCancel">
+      <view class="modal-box" @click.stop>
+        <text class="modal-title">{{ modalTitle }}</text>
+        <text class="modal-desc">{{ modalDesc }}</text>
+        <view class="modal-actions">
+          <button class="btn btn-outline modal-btn" @click="modalCancel">暂不填写</button>
+          <button class="btn btn-primary modal-btn" @click="modalConfirm">继续填写</button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { CONSTITUTION_QUESTIONS } from '@/lib/assessment-data'
+import { onLoad } from '@dcloudio/uni-app'
+import {
+  CONSTITUTION_QUESTIONS,
+  BASIC_Q1_OPTIONS,
+  BASIC_Q2_OPTIONS,
+  BASIC_Q3_OPTIONS,
+  BASIC_OCCUPATION_OPTIONS,
+  BODY_Q4_OPTIONS,
+  BODY_Q5_OPTIONS,
+  BODY_Q6_OPTIONS,
+  BODY_Q7_OPTIONS,
+  BODY_Q8_OPTIONS,
+  BODY_Q9_OPTIONS,
+  BODY_Q10_OPTIONS,
+  BODY_Q11_OPTIONS,
+  BODY_Q12_OPTIONS,
+  BODY_Q13_OPTIONS,
+  BODY_Q14_OPTIONS,
+  BODY_Q15_19_OPTIONS,
+  BODY_Q15_TITLE,
+  BODY_Q16_TITLE,
+  BODY_Q17_TITLE,
+  BODY_Q18_TITLE,
+  BODY_Q19_TITLE,
+} from '@/lib/assessment-data'
 import {
   saveProfile,
+  getProfile,
   appendAssessmentHistory,
   newAssessmentId,
   computeConstitutionScores,
   computeConvertedScores,
   getConstitutionDetermination,
   CONSTITUTION_ENTRY_COUNTS,
+  type BasicInfoBlock,
+  type BodyTestBlock,
 } from '@/lib/profile-utils'
+import {
+  computeBodyTestScoring,
+  getPracticeMethodsTriggered,
+  OVEREXERCISE_REMINDER_TEXT,
+  type BodyTestAnswersInput,
+} from '@/lib/body-test-scoring'
 
-const activeTab = ref<'constitution' | 'body'>('constitution')
+type StepMode = '' | 'basic_info_only' | 'constitution_only' | 'body_test_only'
+
+const currentStep = ref<1 | 2 | 3>(1)
+const mode = ref<StepMode>('')
+const showStepBar = computed(() => !mode.value)
+
+const step1Done = ref(false)
+const step2Done = ref(false)
+
+/** Step1 表单 */
+const basicInfo = ref<{
+  specialConditions: string[]
+  ageRange?: string
+  gender?: string
+  occupation?: string
+}>({ specialConditions: [] })
+
+/** Step3 表单（题4-19 为选项下标，q6/q13/q14 为多选下标数组） */
+const bodyAnswers = ref<BodyTestAnswersInput>({})
+const showBodyResult = ref(false)
+const bodyResult = ref<{
+  score4_12: number
+  evaluationText: string
+  overtrainingWarning: boolean
+  exerciseMethods: string[]
+}>({
+  score4_12: 0,
+  evaluationText: '',
+  overtrainingWarning: false,
+  exerciseMethods: [],
+})
+
+/** 弹窗：进入 Step3 前提示 */
+const modalVisible = ref(false)
+const modalTitle = ref('')
+const modalDesc = ref('')
+const pendingStep3 = ref(false)
+const hasAnyProfile = ref(false)
+
 const showResult = ref(false)
 const resultDimensionScores = ref<Record<string, number>>({})
 const resultDimensionConvertedScores = ref<Record<string, number>>({})
@@ -249,6 +770,262 @@ const canSubmitConstitution = computed(() =>
   constitutionAnswers.value.every((a) => a !== null)
 )
 
+/** Step1：题1 至少选一项（可仅选“没有上述情况”），题2、题3 必选 */
+const canSubmitBasicInfo = computed(() => {
+  const q1 = basicInfo.value.specialConditions
+  const hasQ1 = Array.isArray(q1) && q1.length > 0
+  return hasQ1 && !!basicInfo.value.ageRange && !!basicInfo.value.gender
+})
+
+function basicQ1Selected(id: string): boolean {
+  return basicInfo.value.specialConditions.includes(id)
+}
+
+function toggleBasicQ1(id: string) {
+  const arr = [...basicInfo.value.specialConditions]
+  const i = arr.indexOf(id)
+  if (i >= 0) arr.splice(i, 1)
+  else arr.push(id)
+  if (id === 'special_none') {
+    basicInfo.value.specialConditions = ['special_none']
+    return
+  }
+  basicInfo.value.specialConditions = arr.filter((x) => x !== 'special_none')
+}
+
+function submitBasicInfo() {
+  if (!canSubmitBasicInfo.value) return
+  const conditions = basicInfo.value.specialConditions
+  const specialSituationSelected =
+    conditions.length > 0 && !(conditions.length === 1 && conditions[0] === 'special_none')
+  const ageRange = basicInfo.value.ageRange!
+  const minorOrElderNeedCompanion = ageRange === '<12' || ageRange === '>70'
+  const basicInfoBlock: BasicInfoBlock = {
+    specialConditions: conditions,
+    ageRange,
+    gender: basicInfo.value.gender,
+    occupation: basicInfo.value.occupation,
+    updatedAt: Date.now(),
+  }
+  saveProfile({
+    basicInfo: basicInfoBlock,
+    derived: { specialSituationSelected, minorOrElderNeedCompanion },
+  })
+  appendAssessmentHistory({
+    id: newAssessmentId(),
+    timestamp: Date.now(),
+    type: 'basic_info',
+    payload: { basicInfo: basicInfoBlock },
+    logicVersion: 'v1.0',
+  })
+  step1Done.value = true
+  hasAnyProfile.value = true
+  if (mode.value === 'basic_info_only') {
+    uni.showToast({ title: '已保存' })
+    return
+  }
+  currentStep.value = 2
+}
+
+function goToStep(step: 1 | 2 | 3) {
+  if (step === 1) {
+    if (mode.value === 'constitution_only' || mode.value === 'body_test_only') return
+    currentStep.value = 1
+    return
+  }
+  if (step === 2) {
+    if (mode.value === 'body_test_only') return
+    if (!step1Done.value && !getProfile()?.basicInfo) return
+    currentStep.value = 2
+    return
+  }
+  if (step === 3) {
+    if (mode.value === 'constitution_only') return
+    if (!step2Done.value && !getProfile()?.constitution) return
+    const profile = getProfile()
+    const derived = profile?.derived
+    if (derived?.specialSituationSelected) {
+      modalTitle.value = '温馨提示'
+      modalDesc.value =
+        '根据您填写的情况，身体测试不建议进行。您也可以选择继续填写，结果仅供参考。'
+      pendingStep3.value = true
+      modalVisible.value = true
+      return
+    }
+    if (derived?.minorOrElderNeedCompanion) {
+      modalTitle.value = '温馨提示'
+      modalDesc.value =
+        '您选择的年龄段建议在家人陪同下进行线上练习。是否继续填写身体测评？'
+      pendingStep3.value = true
+      modalVisible.value = true
+      return
+    }
+    currentStep.value = 3
+    modalVisible.value = false
+    pendingStep3.value = false
+  }
+}
+
+function modalConfirm() {
+  modalVisible.value = false
+  currentStep.value = 3
+  pendingStep3.value = false
+}
+
+function modalCancel() {
+  modalVisible.value = false
+  pendingStep3.value = false
+}
+
+/** Step3 多选切换 */
+function toggleBodyQ6(idx: number) {
+  const arr = bodyAnswers.value.q6 || []
+  const i = arr.indexOf(idx)
+  if (i >= 0) bodyAnswers.value.q6 = arr.filter((_, j) => j !== i)
+  else bodyAnswers.value.q6 = [...arr, idx]
+}
+
+function toggleBodyQ13(idx: number) {
+  const arr = bodyAnswers.value.q13 || []
+  const i = arr.indexOf(idx)
+  if (i >= 0) bodyAnswers.value.q13 = arr.filter((_, j) => j !== i)
+  else bodyAnswers.value.q13 = [...arr, idx]
+}
+
+function toggleBodyQ14(idx: number) {
+  const arr = bodyAnswers.value.q14 || []
+  const i = arr.indexOf(idx)
+  if (i >= 0) bodyAnswers.value.q14 = arr.filter((_, j) => j !== i)
+  else bodyAnswers.value.q14 = [...arr, idx]
+}
+
+/** Step3 必填：题4-12 有选即可（题13/14 可选） */
+const canSubmitBodyTest = computed(() => {
+  const a = bodyAnswers.value
+  return (
+    a.q4 !== undefined &&
+    a.q5 !== undefined &&
+    a.q7 !== undefined &&
+    a.q8 !== undefined &&
+    a.q9 !== undefined &&
+    a.q10 !== undefined &&
+    a.q11 !== undefined &&
+    a.q12 !== undefined
+  )
+})
+
+function submitBodyTest() {
+  if (!canSubmitBodyTest.value) return
+  const answers: BodyTestAnswersInput = { ...bodyAnswers.value }
+  const scoring = computeBodyTestScoring(answers)
+  const exerciseMethods = getPracticeMethodsTriggered(answers)
+  const bodyTestBlock: BodyTestBlock = {
+    q4: answers.q4,
+    q5: answers.q5,
+    q6: answers.q6,
+    q7: answers.q7,
+    q8: answers.q8,
+    q9: answers.q9,
+    q10: answers.q10,
+    q11: answers.q11,
+    q12: answers.q12,
+    q13: answers.q13,
+    q14: answers.q14,
+    q15: answers.q15,
+    q16: answers.q16,
+    q17: answers.q17,
+    q18: answers.q18,
+    q19: answers.q19,
+    score4_12: scoring.score4_12,
+    evaluation: scoring.evaluationText,
+    overtrainingWarning: scoring.overtrainingWarning,
+    exerciseMethods,
+    updatedAt: Date.now(),
+  }
+  saveProfile({ bodyTest: bodyTestBlock })
+  appendAssessmentHistory({
+    id: newAssessmentId(),
+    timestamp: Date.now(),
+    type: 'body_test',
+    payload: { bodyTest: bodyTestBlock },
+    logicVersion: 'v1.0',
+  })
+  bodyResult.value = {
+    score4_12: scoring.score4_12,
+    evaluationText: scoring.evaluationText,
+    overtrainingWarning: scoring.overtrainingWarning,
+    exerciseMethods,
+  }
+  showBodyResult.value = true
+}
+
+onLoad((options: Record<string, string> | undefined) => {
+  const m = (options?.mode || '') as StepMode
+  const startStep = options?.startStep === '2' ? 2 : options?.startStep === '3' ? 3 : 1
+  const profile = getProfile()
+
+  if (m === 'basic_info_only' || m === 'constitution_only' || m === 'body_test_only') {
+    mode.value = m
+    if (m === 'basic_info_only') currentStep.value = 1
+    else if (m === 'constitution_only') currentStep.value = 2
+    else currentStep.value = 3
+  } else {
+    // 从档案「开始/继续测评」进来：新用户 step=1，老用户直接到未完成的第一步
+    currentStep.value = startStep
+    // 若直接进 Step3 且需要弹窗（特殊情况/年龄陪同），先停在 Step2 并弹出确认
+    if (startStep === 3 && profile?.derived) {
+      const d = profile.derived
+      if (d.specialSituationSelected) {
+        pendingStep3.value = true
+        modalTitle.value = '温馨提示'
+        modalDesc.value =
+          '根据您填写的情况，身体测试不建议进行。您也可以选择继续填写，结果仅供参考。'
+        modalVisible.value = true
+        currentStep.value = 2
+      } else if (d.minorOrElderNeedCompanion) {
+        pendingStep3.value = true
+        modalTitle.value = '温馨提示'
+        modalDesc.value =
+          '您选择的年龄段建议在家人陪同下进行线上练习。是否继续填写身体测评？'
+        modalVisible.value = true
+        currentStep.value = 2
+      }
+    }
+  }
+
+  hasAnyProfile.value = !!(profile?.basicInfo || profile?.constitution || profile?.bodyTest)
+  if (profile?.basicInfo) step1Done.value = true
+  if (profile?.constitution) step2Done.value = true
+  if (profile?.basicInfo) {
+    basicInfo.value = {
+      specialConditions: profile.basicInfo.specialConditions || [],
+      ageRange: profile.basicInfo.ageRange,
+      gender: profile.basicInfo.gender,
+      occupation: profile.basicInfo.occupation,
+    }
+  }
+  if (profile?.bodyTest && currentStep.value === 3) {
+    bodyAnswers.value = {
+      q4: profile.bodyTest.q4,
+      q5: profile.bodyTest.q5,
+      q6: profile.bodyTest.q6,
+      q7: profile.bodyTest.q7,
+      q8: profile.bodyTest.q8,
+      q9: profile.bodyTest.q9,
+      q10: profile.bodyTest.q10,
+      q11: profile.bodyTest.q11,
+      q12: profile.bodyTest.q12,
+      q13: profile.bodyTest.q13,
+      q14: profile.bodyTest.q14,
+      q15: profile.bodyTest.q15,
+      q16: profile.bodyTest.q16,
+      q17: profile.bodyTest.q17,
+      q18: profile.bodyTest.q18,
+      q19: profile.bodyTest.q19,
+    }
+  }
+})
+
 function goNext() {
   if (currentIndex.value < totalQuestions - 1) currentIndex.value++
 }
@@ -267,27 +1044,27 @@ function submitConstitution() {
       ? '平和质'
       : determination.primary
   const timestamp = Date.now()
-  const record = {
-    id: newAssessmentId(),
-    timestamp,
-    constitutionAnswers: indices,
-    constitutionType,
+  const constitutionBlock = {
+    answers: indices,
     baseScores,
     actualScores,
-    constitutionDimensionScores: dimensionScores,
-    constitutionDimensionConvertedScores: convertedScores,
-    constitutionTendency: determination.tendency,
-    bodyAnswers: [] as number[],
-    painTags: [] as string[],
+    dimensionScores,
+    dimensionConvertedScores: convertedScores,
+    type: constitutionType,
+    tendency: determination.tendency,
+    pianpoYes: determination.pianpoYes,
+    summary: determination.summary,
+    updatedAt: timestamp,
   }
-  appendAssessmentHistory(record)
-  saveProfile({
-    constitutionAnswers: indices,
-    constitutionType,
-    constitutionDimensionScores: dimensionScores,
-    constitutionDimensionConvertedScores: convertedScores,
-    constitutionTendency: determination.tendency,
+  appendAssessmentHistory({
+    id: newAssessmentId(),
     timestamp,
+    type: 'constitution',
+    payload: { constitution: constitutionBlock },
+    logicVersion: 'v1.0',
+  })
+  saveProfile({
+    constitution: constitutionBlock,
   })
   resultDimensionScores.value = dimensionScores
   resultDimensionConvertedScores.value = convertedScores
@@ -295,11 +1072,16 @@ function submitConstitution() {
   resultBaseScores.value = baseScores
   resultConstitutionAnswers.value = indices
   resultDetermination.value = determination
+  step2Done.value = true
   showResult.value = true
 }
 
 function goHome() {
   uni.reLaunch({ url: '/pages/index/index' })
+}
+
+function goProfile() {
+  uni.navigateTo({ url: '/pages/profile/profile' })
 }
 
 function goBodyTest() {
@@ -311,31 +1093,143 @@ function goBodyTest() {
 <style scoped>
 .page {
   min-height: 100vh;
-  padding: 24rpx 32rpx 120rpx;
-  background: #f8f8f8;
+  padding: 28rpx 32rpx 120rpx;
+  background: #f4f6f4;
 }
 
-.tabs {
+/* 步骤条 */
+.step-bar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: #fff;
-  border-radius: 16rpx;
-  padding: 8rpx;
+  border-radius: 20rpx;
+  padding: 28rpx 20rpx;
   margin-bottom: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(92, 124, 92, 0.04);
 }
 
-.tab {
-  flex: 1;
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  flex: 0 0 auto;
+}
+
+.step-num {
+  width: 48rpx;
+  height: 48rpx;
+  line-height: 48rpx;
   text-align: center;
-  padding: 20rpx;
-  font-size: 28rpx;
-  color: #6b6b70;
-  border-radius: 12rpx;
-  transition: all 0.2s;
+  font-size: 26rpx;
+  font-weight: 600;
+  border-radius: 50%;
+  background: #e5e5ea;
+  color: #8f8f94;
 }
 
-.tab.active {
+.step-item.active .step-num,
+.step-item.done .step-num {
   background: #5c7c5c;
   color: #fff;
+}
+
+.step-label {
+  font-size: 22rpx;
+  color: #8f8f94;
+}
+
+.step-item.active .step-label {
+  color: #5c7c5c;
+  font-weight: 500;
+}
+
+.step-line {
+  flex: 1;
+  height: 4rpx;
+  background: #e5e5ea;
+  margin: 0 8rpx;
+  border-radius: 2rpx;
+}
+
+.step-line.done {
+  background: #5c7c5c;
+}
+
+/* 多选勾框（与单选样式统一） */
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #8f8f94;
+  border-radius: 8rpx;
+  margin-right: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.option-row.selected .checkbox {
+  border-color: #5c7c5c;
+  background: #e8f0e8;
+}
+
+.checkbox-inner {
+  font-size: 24rpx;
+  color: #5c7c5c;
+  font-weight: 600;
+}
+
+.body-test-form {
+  max-height: calc(100vh - 280rpx);
+}
+
+/* 弹窗 */
+.modal-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  box-shadow: 0 8rpx 40rpx rgba(0, 0, 0, 0.12);
+}
+
+.modal-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #2c2c2e;
+  margin-bottom: 24rpx;
+}
+
+.modal-desc {
+  display: block;
+  font-size: 28rpx;
+  color: #6b6b70;
+  line-height: 1.6;
+  margin-bottom: 40rpx;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 24rpx;
+}
+
+.modal-actions .modal-btn {
+  flex: 1;
 }
 
 .section {
@@ -387,9 +1281,10 @@ function goBodyTest() {
 
 .question-card {
   background: #fff;
-  border-radius: 16rpx;
-  padding: 28rpx;
+  border-radius: 20rpx;
+  padding: 28rpx 32rpx;
   margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(92, 124, 92, 0.04);
 }
 
 .question-head {
@@ -511,25 +1406,38 @@ function goBodyTest() {
 
 .result-title {
   display: block;
-  font-size: 36rpx;
+  font-size: 38rpx;
   font-weight: 600;
   color: #2c2c2e;
-  margin-bottom: 24rpx;
+  margin-bottom: 28rpx;
+  letter-spacing: 0.5rpx;
 }
 
 .result-card {
   background: #fff;
-  border-radius: 16rpx;
+  border-radius: 20rpx;
   padding: 32rpx;
-  margin-bottom: 32rpx;
+  margin-bottom: 28rpx;
+  box-shadow: 0 2rpx 16rpx rgba(92, 124, 92, 0.06);
+}
+
+.result-card-main {
+  border: 1rpx solid rgba(92, 124, 92, 0.2);
 }
 
 .result-type {
   display: block;
   font-size: 34rpx;
   font-weight: 600;
-  color: #5c7c5c;
+  color: #4a6b4a;
   margin-bottom: 16rpx;
+}
+
+.result-ref {
+  display: block;
+  font-size: 24rpx;
+  color: #9ca89c;
+  margin-top: 12rpx;
 }
 
 .result-guide {
@@ -540,7 +1448,8 @@ function goBodyTest() {
 }
 
 .result-guide.hint {
-  color: #8f8f94;
+  color: #8a9a8a;
+  margin-top: 12rpx;
 }
 
 .result-summary {
@@ -551,10 +1460,11 @@ function goBodyTest() {
 }
 
 .criteria-wrap {
-  background: #f0f4f0;
-  border-radius: 12rpx;
-  padding: 20rpx 24rpx;
-  margin-bottom: 24rpx;
+  background: rgba(244, 248, 244, 0.9);
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 28rpx;
+  border: 1rpx solid rgba(92, 124, 92, 0.12);
 }
 
 .criteria-title {
@@ -675,6 +1585,13 @@ function goBodyTest() {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+}
+
+.profile-link {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: #5c7c5c;
+  text-align: center;
 }
 
 .body-placeholder {

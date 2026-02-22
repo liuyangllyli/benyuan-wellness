@@ -18,9 +18,9 @@
 
 | 路径 | 对应路由 | 说明 |
 |------|----------|------|
-| `src/pages/Index.tsx` | `/` | 首页·此刻 |
+| `src/pages/Index.tsx` | `/` | 首页·当下 |
 | `src/pages/Onboarding.tsx` | `/onboarding` | 新手引导 |
-| `src/pages/Assessment.tsx` | `/assessment` | 知己·体质测评 |
+| `src/pages/Assessment.tsx` | `/assessment` | 观己·体质测评 |
 | `src/pages/Practice.tsx` | `/practice` | 炼体·练功 |
 | `src/pages/PracticePlan.tsx` | `/practice/plan` | 练功计划（以 Tab 为准则可能无独立入口） |
 | `src/pages/Diet.tsx` | `/diet` | 食养 |

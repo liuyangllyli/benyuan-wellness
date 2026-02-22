@@ -17,9 +17,9 @@
 
 | 路径 | 路由 | 职责 |
 |------|------|------|
-| `src/pages/Index.tsx` | `/` | 首页·此刻（时段问候、今日进度、晨间心语） |
+| `src/pages/Index.tsx` | `/` | 首页·当下（时段问候、今日进度、晨间心语） |
 | `src/pages/Onboarding.tsx` | `/onboarding` | 新手引导（首次使用流程） |
-| `src/pages/Assessment.tsx` | `/assessment` | 知己·体质测评（写入 `benyuan_profile`） |
+| `src/pages/Assessment.tsx` | `/assessment` | 观己·体质测评（写入 `benyuan_profile`） |
 | `src/pages/Practice.tsx` | `/practice` | 炼体·练功（含 Tab：今日安排/我的计划/动作库） |
 | `src/pages/PracticePlan.tsx` | `/practice/plan` | 练功计划（路由存在但无独立入口，以 Practice Tab 为准） |
 | `src/pages/Diet.tsx` | `/diet` | 食养（体质饮食推荐 + 餐后感受反馈） |

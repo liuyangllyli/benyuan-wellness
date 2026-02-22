@@ -11,9 +11,9 @@
 
 | 页面 | 路径 / 入口 | 当前展示内容 |
 |------|-------------|--------------|
-| **首页（此刻）** | tab 第一项 `/pages/index/index` | 标题「此刻」+ 一句描述「首页·此刻 · 与 key-code-index、architecture 一致」；**逻辑**：首次打开（未 onboarded 且无 profile、无 logs）会 `reLaunch` 到 onboarding。 |
+| **首页（当下）** | tab 第一项 `/pages/index/index` | 标题「当下」+ 一句描述「首页·当下 · 与 key-code-index、architecture 一致」；**逻辑**：首次打开（未 onboarded 且无 profile、无 logs）会 `reLaunch` 到 onboarding。 |
 | **新手引导** | 首次打开自动跳转，或直接访问 `/pages/onboarding/onboarding` | **已实现**：3 步（本元 → 身·气·神 → 开始归元之路）、步骤点、最后一步「了解自己」「先逛一逛」；写 `benyuan_onboarded`，出口 → 体质测评或首页。 |
-| **知己** | tab「知己」`/pages/assessment/assessment` | **占位**：标题「知己」+「体质测评 · 身体测试（写入 benyuan_profile）」。 |
+| **观己** | tab「观己」`/pages/assessment/assessment` | **占位**：标题「观己」+「体质测评 · 身体测试（写入 benyuan_profile）」。 |
 | **炼体** | tab「炼体」`/pages/practice/practice` | **占位**：标题「炼体」+「练功计划 · 今日安排 · 动作库」。 |
 | **食养** | tab「食养」`/pages/diet/diet` | **占位**：标题「食养」+「体质饮食 · 今日三餐 · 餐后感受」。 |
 | **明理** | tab「明理」`/pages/knowledge/knowledge` | **占位**：标题「明理」+「知识库 · 我的专属」。 |
@@ -47,7 +47,7 @@
 | 页面 | Lovable 应有功能/展示 | 当前状态 | 建议 |
 |------|------------------------|----------|------|
 | **首页 Index** | 时段问候、时辰与节气条、晨间心语、今日进度、推荐卡、入口到各页等 | 仅标题 + 一句描述 | 按实现计划逐步补：问候、进度、入口等。 |
-| **知己 Assessment** | 两 Tab：体质 9 题、身体测试 5 题 + 疼痛多选；结果页（饮食/炼体指导）、出口首页或炼体 | 占位 | 下一阶段实现：题目、结果、写 benyuan_profile。 |
+| **观己 Assessment** | 两 Tab：体质 9 题、身体测试 5 题 + 疼痛多选；结果页（饮食/炼体指导）、出口首页或炼体 | 占位 | 下一阶段实现：题目、结果、写 benyuan_profile。 |
 | **炼体 Practice** | 三 Tab：今日安排、我的计划、动作库；完成练习 → 静心 → 觉察 | 占位 | 实现计划第 4 项。 |
 | **食养 Diet** | 饮食概览、三餐时间线、餐后感受、写 benyuan_diet_feelings | 占位 | 实现计划第 5 项。 |
 | **明理 Knowledge** | 两 Tab：知识库、我的专属；无档案引导测评 | 占位 | 实现计划第 6 项。 |
@@ -97,8 +97,8 @@
 浏览器打开终端提示的地址后：
 
 - **看引导**：清除该站点本地存储（或无痕窗口）后刷新，会先进入 Onboarding，可走完三步并点「了解自己」或「先逛一逛」。
-- **看首页**：完成引导或直接访问首页路径，可见「此刻」占位内容。
-- **看各 tab**：底部 6 个 tab 可切换到知己、炼体、食养、明理、归元。
+- **看首页**：完成引导或直接访问首页路径，可见「当下」占位内容。
+- **看各 tab**：底部 6 个 tab 可切换到观己、炼体、食养、明理、归元。
 - **看非 tab 页**：需在地址栏改路径，例如 `/pages/reflection/reflection`、`/pages/calm/calm`、`/pages/settings/settings`、`/pages/notfound/notfound`（或任意不存在路径看 404）。
 
 ---

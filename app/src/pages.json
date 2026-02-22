@@ -2,11 +2,11 @@
 	"pages": [
 		{
 			"path": "pages/index/index",
-			"style": { "navigationBarTitleText": "此刻" }
+			"style": { "navigationBarTitleText": "当下" }
 		},
 		{
 			"path": "pages/assessment/assessment",
-			"style": { "navigationBarTitleText": "知己" }
+			"style": { "navigationBarTitleText": "观己" }
 		},
 		{
 			"path": "pages/practice/practice",
@@ -47,6 +47,14 @@
 		{
 			"path": "pages/notfound/notfound",
 			"style": { "navigationBarTitleText": "页面不存在" }
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": { "navigationBarTitleText": "我的测评档案" }
+		},
+		{
+			"path": "pages/profile/detail",
+			"style": { "navigationBarTitleText": "历史详情" }
 		}
 	],
 	"globalStyle": {
@@ -61,8 +69,8 @@
 		"borderStyle": "black",
 		"backgroundColor": "#ffffff",
 		"list": [
-			{ "pagePath": "pages/index/index", "text": "此刻", "iconPath": "static/tabbar/index.png", "selectedIconPath": "static/tabbar/index-active.png" },
-			{ "pagePath": "pages/assessment/assessment", "text": "知己", "iconPath": "static/tabbar/assessment.png", "selectedIconPath": "static/tabbar/assessment-active.png" },
+			{ "pagePath": "pages/index/index", "text": "当下", "iconPath": "static/tabbar/index.png", "selectedIconPath": "static/tabbar/index-active.png" },
+			{ "pagePath": "pages/profile/profile", "text": "观己", "iconPath": "static/tabbar/assessment.png", "selectedIconPath": "static/tabbar/assessment-active.png" },
 			{ "pagePath": "pages/practice/practice", "text": "炼体", "iconPath": "static/tabbar/practice.png", "selectedIconPath": "static/tabbar/practice-active.png" },
 			{ "pagePath": "pages/diet/diet", "text": "食养", "iconPath": "static/tabbar/diet.png", "selectedIconPath": "static/tabbar/diet-active.png" },
 			{ "pagePath": "pages/knowledge/knowledge", "text": "明理", "iconPath": "static/tabbar/knowledge.png", "selectedIconPath": "static/tabbar/knowledge-active.png" },

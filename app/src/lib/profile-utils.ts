@@ -1,45 +1,113 @@
 /**
  * 体质档案与算分、推荐逻辑（与 Excel 设计稿一致，逻辑在代码中实现）
  * 读写键名与 key-code-index 一致：benyuan_profile；测评历史用 benyuan_assessment_history
+ * 档案为分块结构（基本信息 / 体质 / 身体测试），支持单块更新与历史复现。
  * @see app/docs/测评Excel转代码约定.md
  * @see app/docs/测评与档案存储设计.md
  */
 
-/** 本地存储的 benyuan_profile 结构（当前档案，供推荐用） */
+const PROFILE_SCHEMA_VERSION = 1
+
+/** 基本信息块（Step1） */
+export interface BasicInfoBlock {
+  specialConditions?: string[]
+  ageRange?: string
+  gender?: string
+  occupation?: string
+  updatedAt?: number
+}
+
+/** 体质测评块（Step2） */
+export interface ConstitutionBlock {
+  answers: (number | string)[]
+  baseScores?: number[]
+  actualScores?: number[]
+  dimensionScores: Record<string, number>
+  dimensionConvertedScores: Record<string, number>
+  type: string
+  tendency?: string[]
+  pianpoYes?: string[]
+  summary?: string
+  updatedAt?: number
+}
+
+/** 身体测评块（Step3，题4-19） */
+export interface BodyTestBlock {
+  q4?: number
+  q5?: number
+  q6?: number[]
+  q7?: number
+  q8?: number
+  q9?: number
+  q10?: number
+  q11?: number
+  q12?: number
+  q13?: number[]
+  q14?: number[]
+  q15?: number
+  q16?: number
+  q17?: number
+  q18?: number
+  q19?: number
+  score4_12?: number
+  evaluation?: string
+  overtrainingWarning?: boolean
+  exerciseMethods?: string[]
+  updatedAt?: number
+}
+
+/** 当前档案（v1 分块结构） */
 export interface BenyuanProfile {
+  schemaVersion?: number
+  basicInfo?: BasicInfoBlock
+  constitution?: ConstitutionBlock
+  bodyTest?: BodyTestBlock
+  timestamp?: number
+  lastFullAssessmentAt?: number
+  status?: {
+    hasBasicInfo: boolean
+    hasConstitution: boolean
+    hasBodyTest: boolean
+  }
+  derived?: {
+    specialSituationSelected?: boolean
+    minorOrElderNeedCompanion?: boolean
+  }
+  // 兼容旧版读取：保留顶层体质字段的兼容（迁移后由 constitution 块填充，见 migrateProfileToV1）
   constitutionAnswers?: (number | string)[]
   constitutionType?: string
-  /** 各体质维度原始分（实际得分之和），用于推荐与展示 */
   constitutionDimensionScores?: Record<string, number>
-  /** 各体质维度转化分（测试用，数据保留） */
   constitutionDimensionConvertedScores?: Record<string, number>
-  /** 体质倾向（转化分 30～39 的偏颇体质，如 ['痰湿质']） */
   constitutionTendency?: string[]
   bodyAnswers?: (number | string)[]
   painTags?: string[]
-  timestamp?: number
 }
 
-/** 单次测评完整记录（写入历史，保留记录） */
+/** 测评记录类型（分块） */
+export type AssessmentRecordType = 'basic_info' | 'constitution' | 'body_test'
+
+/** 单次测评记录（历史一条，可复现当次结果） */
 export interface AssessmentRecord {
   id: string
   timestamp: number
-  constitutionAnswers: (number | string)[]
-  constitutionType: string
-  /** 每题基础得分（1～5），顺序与题目一致 */
+  type: AssessmentRecordType
+  payload: {
+    basicInfo?: BasicInfoBlock
+    constitution?: ConstitutionBlock
+    bodyTest?: BodyTestBlock
+  }
+  logicVersion?: string
+  // 兼容旧版：历史中可能仍存在旧格式（无 type/payload），读取时迁移
+  constitutionAnswers?: (number | string)[]
+  constitutionType?: string
   baseScores?: number[]
-  /** 每题实际得分（含 * 题反向），顺序与题目一致 */
   actualScores?: number[]
-  /** 各体质维度原始分（实际得分之和） */
   constitutionDimensionScores?: Record<string, number>
-  /** 各体质维度转化分（公式：((原始分-条目数)/(条目数×4))×100） */
   constitutionDimensionConvertedScores?: Record<string, number>
-  /** 体质倾向（转化分 30～39 的偏颇体质） */
   constitutionTendency?: string[]
   bodyAnswers?: (number | string)[]
   painTags?: string[]
   bodyResult?: string
-  logicVersion?: string
 }
 
 /** 九种体质各自题目数量（条目数） */
@@ -59,39 +127,144 @@ const PROFILE_KEY = 'benyuan_profile'
 const HISTORY_KEY = 'benyuan_assessment_history'
 const HISTORY_CAP = 50
 
-/** 读取本地体质档案（当前） */
+/** 将旧版 profile（顶层 constitution*）迁移为 v1 分块结构 */
+function migrateProfileToV1(raw: Record<string, unknown>): BenyuanProfile {
+  if (raw.schemaVersion === PROFILE_SCHEMA_VERSION) {
+    return raw as BenyuanProfile
+  }
+  const now = Date.now()
+  const p: BenyuanProfile = {
+    schemaVersion: PROFILE_SCHEMA_VERSION,
+    timestamp: (raw.timestamp as number) ?? now,
+  }
+  if (raw.constitutionAnswers != null || raw.constitutionType != null) {
+    p.constitution = {
+      answers: (raw.constitutionAnswers as (number | string)[]) ?? [],
+      dimensionScores: (raw.constitutionDimensionScores as Record<string, number>) ?? {},
+      dimensionConvertedScores: (raw.constitutionDimensionConvertedScores as Record<string, number>) ?? {},
+      type: (raw.constitutionType as string) ?? '',
+      tendency: (raw.constitutionTendency as string[]) ?? undefined,
+      baseScores: raw.baseScores as number[] | undefined,
+      actualScores: raw.actualScores as number[] | undefined,
+      updatedAt: now,
+    }
+    p.constitutionAnswers = p.constitution.answers
+    p.constitutionType = p.constitution.type
+    p.constitutionDimensionScores = p.constitution.dimensionScores
+    p.constitutionDimensionConvertedScores = p.constitution.dimensionConvertedScores
+    p.constitutionTendency = p.constitution.tendency
+  }
+  if (raw.bodyAnswers != null || raw.painTags != null) {
+    p.bodyAnswers = raw.bodyAnswers as (number | string)[]
+    p.painTags = raw.painTags as string[]
+  }
+  p.status = {
+    hasBasicInfo: !!raw.basicInfo,
+    hasConstitution: !!p.constitution,
+    hasBodyTest: !!raw.bodyTest,
+  }
+  return p
+}
+
+/** 将旧版历史记录（无 type/payload）迁移为新格式 */
+function migrateLegacyRecord(r: Record<string, unknown>): AssessmentRecord {
+  if (r.type != null && r.payload != null) {
+    return r as AssessmentRecord
+  }
+  return {
+    id: (r.id as string) ?? newAssessmentId(),
+    timestamp: (r.timestamp as number) ?? 0,
+    type: 'constitution',
+    payload: {
+      constitution: {
+        answers: (r.constitutionAnswers as (number | string)[]) ?? [],
+        dimensionScores: (r.constitutionDimensionScores as Record<string, number>) ?? {},
+        dimensionConvertedScores: (r.constitutionDimensionConvertedScores as Record<string, number>) ?? {},
+        type: (r.constitutionType as string) ?? '',
+        tendency: (r.constitutionTendency as string[]) ?? undefined,
+        baseScores: r.baseScores as number[] | undefined,
+        actualScores: r.actualScores as number[] | undefined,
+      },
+    },
+    logicVersion: r.logicVersion as string | undefined,
+  }
+}
+
+/** 读取本地体质档案（当前）；若为旧版则迁移并写回 */
 export function getProfile(): BenyuanProfile | null {
   try {
     const raw = uni.getStorageSync(PROFILE_KEY)
     if (!raw) return null
-    return typeof raw === 'string' ? JSON.parse(raw) : raw
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const profile = migrateProfileToV1(parsed)
+    if (parsed.schemaVersion !== PROFILE_SCHEMA_VERSION) {
+      uni.setStorageSync(PROFILE_KEY, JSON.stringify(profile))
+    }
+    return profile
   } catch {
     return null
   }
 }
 
-/** 写入本地体质档案（测评完成后更新「当前」） */
-export function saveProfile(profile: BenyuanProfile): void {
-  const next = { ...getProfile(), ...profile, timestamp: Date.now() }
+/** 写入本地体质档案（支持分块合并）；传入的 partial 仅更新对应块并刷新 timestamp */
+export function saveProfile(partial: Partial<BenyuanProfile>): void {
+  const now = Date.now()
+  const current = getProfile()
+  const next: BenyuanProfile = {
+    ...current,
+    ...partial,
+    timestamp: now,
+    schemaVersion: current?.schemaVersion ?? PROFILE_SCHEMA_VERSION,
+  }
+  if (partial.basicInfo != null) {
+    next.basicInfo = { ...partial.basicInfo, updatedAt: now }
+    next.status = { ...next.status, hasBasicInfo: true } as BenyuanProfile['status']
+  }
+  if (partial.constitution != null) {
+    next.constitution = { ...partial.constitution, updatedAt: now }
+    next.status = { ...next.status, hasConstitution: true } as BenyuanProfile['status']
+    next.constitutionAnswers = next.constitution.answers
+    next.constitutionType = next.constitution.type
+    next.constitutionDimensionScores = next.constitution.dimensionScores
+    next.constitutionDimensionConvertedScores = next.constitution.dimensionConvertedScores
+    next.constitutionTendency = next.constitution.tendency
+  }
+  if (partial.bodyTest != null) {
+    next.bodyTest = { ...partial.bodyTest, updatedAt: now }
+    next.status = { ...next.status, hasBodyTest: true } as BenyuanProfile['status']
+  }
+  if (partial.lastFullAssessmentAt != null) next.lastFullAssessmentAt = partial.lastFullAssessmentAt
+  if (partial.derived != null) next.derived = { ...current?.derived, ...partial.derived }
+  if (next.status == null) {
+    next.status = {
+      hasBasicInfo: !!next.basicInfo,
+      hasConstitution: !!next.constitution,
+      hasBodyTest: !!next.bodyTest,
+    }
+  }
   uni.setStorageSync(PROFILE_KEY, JSON.stringify(next))
 }
 
-/** 读取测评历史（按时间倒序，最多 HISTORY_CAP 条） */
+/** 读取测评历史（按时间倒序，最多 HISTORY_CAP 条）；旧版记录在内存中迁移为新格式 */
 export function getAssessmentHistory(): AssessmentRecord[] {
   try {
     const raw = uni.getStorageSync(HISTORY_KEY)
     if (!raw) return []
     const list = typeof raw === 'string' ? JSON.parse(raw) : raw
-    return Array.isArray(list) ? list : []
+    if (!Array.isArray(list)) return []
+    return list.map((r: Record<string, unknown>) => migrateLegacyRecord(r))
   } catch {
     return []
   }
 }
 
-/** 追加一条测评记录到历史并保留最近 N 条 */
+/** 追加一条测评记录到历史并保留最近 N 条；record 需含 id、timestamp、type、payload */
 export function appendAssessmentHistory(record: AssessmentRecord): void {
   const list = getAssessmentHistory()
-  list.unshift(record)
+  const normalized: AssessmentRecord = record.type != null && record.payload != null
+    ? record
+    : migrateLegacyRecord(record as unknown as Record<string, unknown>)
+  list.unshift(normalized)
   const capped = list.slice(0, HISTORY_CAP)
   uni.setStorageSync(HISTORY_KEY, JSON.stringify(capped))
 }
